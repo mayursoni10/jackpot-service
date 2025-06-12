@@ -14,11 +14,14 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class BetService {
 
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ApplicationEventPublisher eventPublisher;
-    private static final String TOPIC = "jackpot-bets";
 
     public void publishBet(BetRequest betRequest) {
+        if (betRequest == null) {
+            log.warn("Received null bet request");
+            return;
+        }
+
         Bet bet = new Bet(
                 betRequest.getBetId(),
                 betRequest.getUserId(),
@@ -26,11 +29,7 @@ public class BetService {
                 betRequest.getBetAmount()
         );
 
-        // Mock Kafka producer - just log the payload and publish event
-        log.info("Publishing bet to Kafka topic '{}': {}", TOPIC, bet);
+        log.info("Publishing bet: {}", bet);
         eventPublisher.publishEvent(new BetEvent(bet));
-
-        // Uncomment below line for actual Kafka integration
-        // kafkaTemplate.send(TOPIC, bet.getBetId(), bet);
     }
 }
