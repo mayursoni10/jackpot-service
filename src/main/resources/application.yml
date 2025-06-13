@@ -14,6 +14,8 @@ spring:
     show-sql: true
   kafka:
     bootstrap-servers: localhost:9092
+    listener:
+      auto-startup: false
     consumer:
       group-id: jackpot-service
       auto-offset-reset: earliest
@@ -24,3 +26,6 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+kafka:
+  enabled: false
