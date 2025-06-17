@@ -1,97 +1,113 @@
 package com.sporty.jackpot.service;
 
-import com.sporty.jackpot.dto.JackpotRewardResponse;
+import com.sporty.jackpot.dto.RewardEvaluationResponse;
 import com.sporty.jackpot.entity.Jackpot;
+import com.sporty.jackpot.entity.JackpotContribution;
 import com.sporty.jackpot.entity.JackpotReward;
-import com.sporty.jackpot.entity.RewardType;
+import com.sporty.jackpot.factory.RewardStrategyFactory;
 import com.sporty.jackpot.repository.JackpotContributionRepository;
 import com.sporty.jackpot.repository.JackpotRepository;
 import com.sporty.jackpot.repository.JackpotRewardRepository;
+import com.sporty.jackpot.strategy.reward.RewardStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Random;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class JackpotRewardService {
+
     private final JackpotRepository jackpotRepository;
     private final JackpotContributionRepository contributionRepository;
     private final JackpotRewardRepository rewardRepository;
-    private final Random random = new Random();
+    private final RewardStrategyFactory strategyFactory;
 
-    @Transactional
-    public JackpotRewardResponse evaluateJackpotReward(String betId) {
-        return contributionRepository.findByBetId(betId)
-                .map(contribution -> {
-                    Jackpot jackpot = jackpotRepository.findById(contribution.getJackpotId())
-                            .orElseThrow(() -> new RuntimeException("Jackpot not found"));
+    public RewardEvaluationResponse evaluateReward(String betId) {
+        log.info("Evaluating reward for bet: {}", betId);
 
-                    BigDecimal winChance = calculateWinChance(jackpot);
-                    boolean won = checkIfWon(winChance);
-
-                    if (won) {
-                        BigDecimal rewardAmount = jackpot.getCurrentPool();
-
-                        // Create reward record
-                        JackpotReward reward = new JackpotReward();
-                        reward.setBetId(betId);
-                        reward.setUserId(contribution.getUserId());
-                        reward.setJackpotId(jackpot.getJackpotId());
-                        reward.setJackpotRewardAmount(rewardAmount);
-                        rewardRepository.save(reward);
-
-                        // Reset jackpot to initial pool
-                        jackpot.setCurrentPool(jackpot.getInitialPool());
-                        jackpotRepository.save(jackpot);
-
-                        return JackpotRewardResponse.builder()
-                                .won(true)
-                                .rewardAmount(rewardAmount)
-                                .message("Congratulations! You won the jackpot!")
-                                .build();
-                    }
-
-                    return JackpotRewardResponse.builder()
-                            .won(false)
-                            .rewardAmount(BigDecimal.ZERO)
-                            .message("Better luck next time!")
-                            .build();
-                })
-                .orElse(JackpotRewardResponse.builder()
-                        .won(false)
-                        .rewardAmount(BigDecimal.ZERO)
-                        .message("Bet not found or not eligible for jackpot")
-                        .build());
-    }
-
-    private BigDecimal calculateWinChance(Jackpot jackpot) {
-        if (jackpot.getRewardType() == RewardType.FIXED) {
-            return jackpot.getRewardChancePercentage();
+        // Check if bet has already been evaluated
+        Optional<JackpotReward> existingReward = rewardRepository.findByBetId(betId);
+        if (existingReward.isPresent()) {
+            JackpotReward reward = existingReward.get();
+            return new RewardEvaluationResponse(
+                    true,
+                    reward.getJackpotRewardAmount(),
+                    "Jackpot already awarded for this bet!"
+            );
         }
 
-        // Variable reward - increases as pool increases
-        BigDecimal poolIncrease = jackpot.getCurrentPool().subtract(jackpot.getInitialPool());
-
-        if (jackpot.getPoolLimitFor100PercentChance() != null &&
-                jackpot.getCurrentPool().compareTo(jackpot.getPoolLimitFor100PercentChance()) >= 0) {
-            return new BigDecimal("100");
+        // Find contribution for this bet
+        Optional<JackpotContribution> contributionOpt = contributionRepository.findByBetId(betId);
+        if (contributionOpt.isEmpty()) {
+            return new RewardEvaluationResponse(
+                    false,
+                    BigDecimal.ZERO,
+                    "Bet not found or not eligible for jackpot"
+            );
         }
 
-        BigDecimal increaseAmount = poolIncrease.multiply(jackpot.getRewardChanceIncreaseRate())
-                .divide(new BigDecimal("1000"), 4, RoundingMode.HALF_UP);
+        JackpotContribution contribution = contributionOpt.get();
+        Optional<Jackpot> jackpotOpt = jackpotRepository.findById(contribution.getJackpotId());
 
-        BigDecimal chance = jackpot.getInitialRewardChancePercentage().add(increaseAmount);
-        return chance.min(new BigDecimal("100"));
+        if (jackpotOpt.isEmpty()) {
+            return new RewardEvaluationResponse(
+                    false,
+                    BigDecimal.ZERO,
+                    "Jackpot configuration not found"
+            );
+        }
+
+        Jackpot jackpot = jackpotOpt.get();
+        boolean won = calculateWinProbability(jackpot);
+
+        if (won) {
+            BigDecimal rewardAmount = jackpot.getCurrentPool();
+
+            // Create reward record
+            JackpotReward reward = new JackpotReward();
+            reward.setBetId(betId);
+            reward.setUserId(contribution.getUserId());
+            reward.setJackpotId(jackpot.getJackpotId());
+            reward.setJackpotRewardAmount(rewardAmount);
+            reward.setCreatedAt(LocalDateTime.now());
+            rewardRepository.save(reward);
+
+            // Reset jackpot to initial pool value
+            jackpot.setCurrentPool(jackpot.getInitialPool());
+            jackpotRepository.save(jackpot);
+
+            log.info("Jackpot won! Bet: {}, Amount: {}", betId, rewardAmount);
+
+            return new RewardEvaluationResponse(
+                    true,
+                    rewardAmount,
+                    "Congratulations! You won the jackpot!"
+            );
+        } else {
+            return new RewardEvaluationResponse(
+                    false,
+                    BigDecimal.ZERO,
+                    "Better luck next time!"
+            );
+        }
     }
 
-    private boolean checkIfWon(BigDecimal winChancePercentage) {
-        double randomValue = random.nextDouble() * 100;
-        return randomValue < winChancePercentage.doubleValue();
+    private boolean calculateWinProbability(Jackpot jackpot) {
+        RewardStrategy strategy = strategyFactory.getStrategy(jackpot.getRewardType());
+        BigDecimal winChance = strategy.calculateWinChance(jackpot);
+
+        // Generate random number between 0 and 100
+        double random = Math.random() * 100;
+        boolean won = random < winChance.doubleValue();
+
+        log.debug("Win chance: {}%, Random: {}, Won: {}", winChance, random, won);
+        return won;
     }
 }

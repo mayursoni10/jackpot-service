@@ -17,6 +17,12 @@ public class RewardEvaluationResponse {
         this.message = message;
     }
 
+    public RewardEvaluationResponse(boolean isWinner, BigDecimal rewardAmount, String message) {
+        this.isWinner = isWinner;
+        this.rewardAmount = rewardAmount;
+        this.message = message;
+    }
+
     // Getters and Setters
     public String getBetId() { return betId; }
     public void setBetId(String betId) { this.betId = betId; }

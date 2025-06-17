@@ -2,7 +2,7 @@ package com.sporty.jackpot.controller;
 
 
 import com.sporty.jackpot.dto.BetRequest;
-import com.sporty.jackpot.dto.JackpotRewardResponse;
+import com.sporty.jackpot.dto.RewardEvaluationResponse;
 import com.sporty.jackpot.service.BetService;
 import com.sporty.jackpot.service.JackpotRewardService;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +27,8 @@ public class JackpotController {
     }
 
     @GetMapping("/bets/{betId}/evaluate")
-    public ResponseEntity<JackpotRewardResponse> evaluateJackpotReward(@PathVariable String betId) {
-        JackpotRewardResponse response = rewardService.evaluateJackpotReward(betId);
+    public ResponseEntity<RewardEvaluationResponse> evaluateJackpotReward(@PathVariable String betId) {
+        RewardEvaluationResponse response = rewardService.evaluateReward(betId);
         return ResponseEntity.ok(response);
     }
 }
