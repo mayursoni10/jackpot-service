@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 public class Jackpot {
     @Id
     private String jackpotId;
-
     private BigDecimal currentPool;
     private BigDecimal initialPool;
 
