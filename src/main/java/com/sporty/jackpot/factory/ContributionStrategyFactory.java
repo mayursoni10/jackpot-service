@@ -6,15 +6,17 @@ import com.sporty.jackpot.strategy.contribution.FixedContributionStrategy;
 import com.sporty.jackpot.strategy.contribution.VariableContributionStrategy;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class ContributionStrategyFactory {
+    @Autowired
     private FixedContributionStrategy fixedStrategy;
+    @Autowired
     private VariableContributionStrategy variableStrategy;
 
     private Map<ContributionType, ContributionStrategy> strategies;

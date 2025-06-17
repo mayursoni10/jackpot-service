@@ -1,10 +1,12 @@
 package com.sporty.jackpot.strategy.contribution;
 
 import com.sporty.jackpot.entity.Jackpot;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+@Component
 public class VariableContributionStrategy implements ContributionStrategy{
     private static final BigDecimal MINIMUM_PERCENTAGE = BigDecimal.ONE; // 1%
 
