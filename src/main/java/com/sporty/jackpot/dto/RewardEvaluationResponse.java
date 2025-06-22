@@ -1,7 +1,10 @@
 package com.sporty.jackpot.dto;
 
+import lombok.Data;
+
 import java.math.BigDecimal;
 
+@Data
 public class RewardEvaluationResponse {
     private String betId;
     private boolean isWinner;
@@ -22,17 +25,4 @@ public class RewardEvaluationResponse {
         this.rewardAmount = rewardAmount;
         this.message = message;
     }
-
-    // Getters and Setters
-    public String getBetId() { return betId; }
-    public void setBetId(String betId) { this.betId = betId; }
-
-    public boolean isWinner() { return isWinner; }
-    public void setWinner(boolean winner) { isWinner = winner; }
-
-    public BigDecimal getRewardAmount() { return rewardAmount; }
-    public void setRewardAmount(BigDecimal rewardAmount) { this.rewardAmount = rewardAmount; }
-
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
 }

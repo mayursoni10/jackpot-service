@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sporty.jackpot.config.TestConfig;
 import com.sporty.jackpot.dto.BetRequest;
 import com.sporty.jackpot.dto.RewardEvaluationResponse;
+import com.sporty.jackpot.exception.GlobalExceptionHandler;
 import com.sporty.jackpot.service.BetService;
 import com.sporty.jackpot.service.JackpotRewardService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 
 @ExtendWith(MockitoExtension.class)
-@Import(TestConfig.class)
+@Import({TestConfig.class, GlobalExceptionHandler.class})
 class JackpotControllerTest {
 
     private MockMvc mockMvc;
@@ -85,102 +87,89 @@ class JackpotControllerTest {
                         .content(invalidJson))
                 .andExpect(status().isOk()); // Update to isBadRequest() if validation is added
     }
-}
-
-//    @Test
-//    @DisplayName("Should evaluate winning jackpot reward")
-//    void evaluateJackpotReward_WinningBet_ReturnsWinResponse() throws Exception {
-//        // Given
-//        String betId = "BET-001";
-//        RewardEvaluationResponse winResponse = new RewardEvaluationResponse(
-//                true,
-//                new BigDecimal("5000.00"),
-//                "Congratulations! You won the jackpot!"
-//        );
-//
-//        when(jackpotRewardService.evaluateReward(betId)).thenReturn(winResponse);
-//
-//        // When & Then
-//        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
-//                .andExpect(status().isOk())
-//                .andExpect(jsonPath("$.isWinner").value(true))
-//                .andExpect(jsonPath("$.rewardAmount").value(5000.00))
-//                .andExpect(jsonPath("$.message").value("Congratulations! You won the jackpot!"));
-//
-//        verify(jackpotRewardService, times(1)).evaluateReward(betId);
-//    }
-
-//    @Test
-//    @DisplayName("Should evaluate losing jackpot reward")
-//    void evaluateJackpotReward_LosingBet_ReturnsLoseResponse() throws Exception {
-//        // Given
-//        String betId = "BET-002";
-//        RewardEvaluationResponse loseResponse = new RewardEvaluationResponse(
-//                false,
-//                BigDecimal.ZERO,
-//                "Better luck next time!"
-//        );
-//
-//        when(jackpotRewardService.evaluateReward(betId)).thenReturn(loseResponse);
-//
-//        // When & Then
-//        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
-//                .andExpect(status().isOk())
-//                .andExpect(jsonPath("$.isWinner").value(false))
-//                .andExpect(jsonPath("$.rewardAmount").value(0))
-//                .andExpect(jsonPath("$.message").value("Better luck next time!"));
-//    }
-
-//    @Test
-//    @DisplayName("Should handle bet not found")
-//    void evaluateJackpotReward_BetNotFound_ReturnsNotFound() throws Exception {
-//        // Given
-//        String betId = "NON-EXISTENT";
-//        RewardEvaluationResponse notFoundResponse = new RewardEvaluationResponse(
-//                false,
-//                BigDecimal.ZERO,
-//                "Bet not found or not eligible for jackpot"
-//        );
-//
-//        when(jackpotRewardService.evaluateReward(betId)).thenReturn(notFoundResponse);
-//
-//        // When & Then
-//        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
-//                .andExpect(status().isOk())
-//                .andExpect(jsonPath("$.message").value("Bet not found or not eligible for jackpot"));
-//    }
-
-//    @Test
-//    @DisplayName("Should handle service exception")
-//    void evaluateJackpotReward_ServiceException_ReturnsServerError() throws Exception {
-//        // Given
-//        String betId = "ERROR-BET";
-//        when(jackpotRewardService.evaluateReward(betId))
-//                .thenThrow(new RuntimeException("Database connection error"));
-//
-//        // When & Then
-//        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
-//                .andExpect(status().isInternalServerError());
-//    }
-
-//    @Test
-//    @DisplayName("Should handle already evaluated bet")
-//    void evaluateJackpotReward_AlreadyEvaluated_ReturnsAlreadyAwarded() throws Exception {
-//        // Given
-//        String betId = "ALREADY-EVALUATED";
-//        RewardEvaluationResponse alreadyEvaluatedResponse = new RewardEvaluationResponse(
-//                true,
-//                new BigDecimal("3000.00"),
-//                "Jackpot already awarded for this bet!"
-//        );
-//
-//        when(jackpotRewardService.evaluateReward(betId)).thenReturn(alreadyEvaluatedResponse);
-//
-//        // When & Then
-//        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
-//                .andExpect(status().isOk())
-//                .andExpect(jsonPath("$.isWinner").value(true))
-//                .andExpect(jsonPath("$.rewardAmount").value(3000.00))
-//                .andExpect(jsonPath("$.message").value("Jackpot already awarded for this bet!"));
-//    }
 //}
+
+    @Test
+    @DisplayName("Should evaluate winning jackpot reward")
+    void evaluateJackpotReward_WinningBet_ReturnsWinResponse() throws Exception {
+        // Given
+        String betId = "BET-001";
+        RewardEvaluationResponse winResponse = new RewardEvaluationResponse(
+                true,
+                new BigDecimal("5000.00"),
+                "Congratulations! You won the jackpot!"
+        );
+
+        when(jackpotRewardService.evaluateReward(betId)).thenReturn(winResponse);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.winner").value(true))
+                .andExpect(jsonPath("$.rewardAmount").value(5000.00))
+                .andExpect(jsonPath("$.message").value("Congratulations! You won the jackpot!"));
+
+        verify(jackpotRewardService, times(1)).evaluateReward(betId);
+    }
+
+    @Test
+    @DisplayName("Should evaluate losing jackpot reward")
+    void evaluateJackpotReward_LosingBet_ReturnsLoseResponse() throws Exception {
+        // Given
+        String betId = "BET-002";
+        RewardEvaluationResponse loseResponse = new RewardEvaluationResponse(
+                false,
+                BigDecimal.ZERO,
+                "Better luck next time!"
+        );
+
+        when(jackpotRewardService.evaluateReward(betId)).thenReturn(loseResponse);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.winner").value(false))
+                .andExpect(jsonPath("$.rewardAmount").value(0))
+                .andExpect(jsonPath("$.message").value("Better luck next time!"));
+    }
+
+    @Test
+    @DisplayName("Should handle bet not found")
+    void evaluateJackpotReward_BetNotFound_ReturnsNotFound() throws Exception {
+        // Given
+        String betId = "NON-EXISTENT";
+        RewardEvaluationResponse notFoundResponse = new RewardEvaluationResponse(
+                false,
+                BigDecimal.ZERO,
+                "Bet not found or not eligible for jackpot"
+        );
+
+        when(jackpotRewardService.evaluateReward(betId)).thenReturn(notFoundResponse);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Bet not found or not eligible for jackpot"));
+    }
+
+    @Test
+    @DisplayName("Should handle already evaluated bet")
+    void evaluateJackpotReward_AlreadyEvaluated_ReturnsAlreadyAwarded() throws Exception {
+        // Given
+        String betId = "ALREADY-EVALUATED";
+        RewardEvaluationResponse alreadyEvaluatedResponse = new RewardEvaluationResponse(
+                true,
+                new BigDecimal("3000.00"),
+                "Jackpot already awarded for this bet!"
+        );
+
+        when(jackpotRewardService.evaluateReward(betId)).thenReturn(alreadyEvaluatedResponse);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/bets/{betId}/evaluate", betId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.winner").value(true))
+                .andExpect(jsonPath("$.rewardAmount").value(3000.00))
+                .andExpect(jsonPath("$.message").value("Jackpot already awarded for this bet!"));
+    }
+}
